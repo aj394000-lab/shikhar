@@ -9,7 +9,7 @@ const portfolioItems = [
     category: 'Video Editing',
     thumbnail: "https://images.unsplash.com/photo-1664767289413-279326324666?auto=format&fit=crop&w=1100&q=80",
     alt: 'Red sports car on dark background with dramatic lighting and motion blur, atmospheric cinematic shot',
-    span: 'col-span-1 sm:col-span-2',
+    span: 'col-span-1 sm:col-span-2 lg:col-span-1',
     featured: true,
     instagram: 'https://www.instagram.com/cre.ativva',
   },
@@ -39,7 +39,7 @@ const portfolioItems = [
     category: 'Paid Advertising',
     thumbnail: "https://images.unsplash.com/photo-1691006961338-8a35d7641ea0?auto=format&fit=crop&w=1100&q=80",
     alt: 'Orange Porsche on track with motion blur background, low key lighting, dark tunnel environment',
-    span: 'col-span-1 lg:col-span-2',
+    span: 'col-span-1',
     featured: false,
     instagram: 'https://www.instagram.com/cre.ativva',
   },
@@ -49,7 +49,7 @@ const portfolioItems = [
     category: 'Brand Strategy',
     thumbnail: "https://images.unsplash.com/photo-1731988666788-6f0251886c1b?auto=format&fit=crop&w=1100&q=80",
     alt: 'Close-up of black car hood with dramatic studio lighting creating deep shadows and metallic reflections',
-    span: 'col-span-1 lg:col-span-2',
+    span: 'col-span-1',
     featured: false,
     instagram: 'https://www.instagram.com/cre.ativva',
   },
@@ -242,7 +242,7 @@ export default function PortfolioSection() {
         </div>
 
         {/* Portfolio grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-min">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 auto-rows-min">
           {portfolioItems.map((item, index) => (
             <PortfolioCard key={item.id} item={item} index={index} />
           ))}
