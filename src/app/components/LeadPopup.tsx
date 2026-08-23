@@ -1,21 +1,25 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
+import { LEAD_FIELD_LIMITS, validateLead, type LeadInput } from '@/lib/leadValidation';
 
-interface LeadData {
-  name: string;
-  phone: string;
-  email: string;
-  service: string;
-  message: string;
-  // When true, admin UI should omit showing message/timestamp for privacy/UX
-  hideDetails?: boolean;
-}
+type LeadData = LeadInput;
+
+const SERVICE_OPTIONS = [
+  'social-media',
+  'content-creation',
+  'paid-ads',
+  'seo',
+  'brand-identity',
+  'performance',
+  'video-editing',
+] as const;
 
 export default function LeadPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState<LeadData>({
     name: '',
     phone: '',
@@ -38,16 +42,21 @@ export default function LeadPopup() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = validateLead(formData, SERVICE_OPTIONS);
+    if (!validation.ok) {
+      setFormError(validation.error);
+      return;
+    }
     // Save to localStorage with timestamp
     try {
       const existing = JSON.parse(localStorage.getItem('creativva_leads') || '[]');
       // mark popup submissions to hide details in admin
-      const newLead = { ...formData, timestamp: new Date().toISOString(), hideDetails: true };
+      const newLead = { ...validation.lead, timestamp: new Date().toISOString(), hideDetails: true };
       localStorage.setItem('creativva_leads', JSON.stringify([...existing, newLead]));
     } catch {
       // silently fail
     }
-    console.log('Lead captured:', formData);
+    setFormError('');
     setIsSubmitted(true);
     setTimeout(() => {
       setIsVisible(false);
@@ -57,6 +66,7 @@ export default function LeadPopup() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    if (formError) setFormError('');
   };
 
   if (!isVisible) return null;
@@ -122,6 +132,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Your Full Name *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.name}
+                    autoComplete="name"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -133,6 +145,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Phone Number *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.phone}
+                    autoComplete="tel"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -144,6 +158,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Email Address *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.email}
+                    autoComplete="email"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -172,9 +188,13 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Tell us about your project (optional)"
                     rows={3}
+                    maxLength={LEAD_FIELD_LIMITS.message}
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors resize-none"
                   />
                 </div>
+                {formError && (
+                  <p className="text-xs" role="alert" style={{ color: '#FF8C4A' }}>{formError}</p>
+                )}
                 <button
                   type="submit"
                   className="w-full cta-gradient-btn text-white font-bold py-4 rounded-xl text-sm tracking-wide"

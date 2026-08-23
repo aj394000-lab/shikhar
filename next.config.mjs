@@ -1,8 +1,25 @@
 import { imageHosts } from './image-hosts.config.mjs';
 
+const securityHeaders = [
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false,
+  async headers() {
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      {
+        source: '/api/admin/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+    ];
+  },
   distDir: process.env.DIST_DIR || '.next',
   typescript: {
     ignoreBuildErrors: true,
