@@ -1,89 +1,55 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { LEAD_FIELD_LIMITS, validateLead, type LeadInput } from '@/lib/leadValidation';
+import { ArrowRightIcon, InstagramIcon } from '@/components/ui/icons';
+import { useLeadForm, LeadFormChangeEvent } from '@/hooks/useLeadForm';
+import { useSectionReveal } from '@/hooks/useRevealOnScroll';
+import { saveLead } from '@/lib/leads';
+import { LEAD_FIELD_LIMITS, validateLead } from '@/lib/leadValidation';
+import { SERVICE_OPTIONS, SERVICE_VALUES } from '@/lib/services';
 
-type FormState = LeadInput;
+const FIELD_STYLE: React.CSSProperties = {
+  background: 'rgba(22,23,40,0.8)',
+  border: '1px solid rgba(30,32,64,0.9)',
+  color: '#F0F0F5',
+};
 
-interface LeadEntry extends FormState {
-  timestamp: string;
-  hideDetails?: boolean;
-}
+const handleFieldFocus = (e: React.FocusEvent<HTMLElement>) => {
+  e.target.style.borderColor = 'rgba(139,63,212,0.6)';
+  e.target.style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)';
+};
 
-const SERVICE_OPTIONS = [
-  'social-media-marketing',
-  'content-creation',
-  'paid-advertising',
-  'seo-analytics',
-  'social-media-management',
-  'brand-identity',
-  'performance-marketing',
-  'video-editing',
-] as const;
+const handleFieldBlur = (e: React.FocusEvent<HTMLElement>) => {
+  e.target.style.borderColor = 'rgba(30,32,64,0.9)';
+  e.target.style.boxShadow = 'none';
+};
 
 export default function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
-  const [formData, setFormData] = useState<FormState>({
-    name: '',
-    phone: '',
-    email: '',
-    service: '',
-    message: '',
-  });
+  const { formData, handleChange: handleFormChange } = useLeadForm();
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            if (leftRef.current) {
-              leftRef.current.style.opacity = '1';
-              leftRef.current.classList.add('animate-slide-left');
-            }
-            if (rightRef.current) {
-              rightRef.current.style.opacity = '1';
-              rightRef.current.classList.add('animate-slide-right');
-            }
-          }
-        });
-      },
-      { threshold: 0.2 }
-    );
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
-  }, []);
+  useSectionReveal(sectionRef, [
+    { ref: leftRef, className: 'animate-slide-left' },
+    { ref: rightRef, className: 'animate-slide-right' },
+  ]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e: LeadFormChangeEvent) => {
+    handleFormChange(e);
     if (formError) setFormError('');
-  };
-
-  const saveLeadEntry = (lead: LeadEntry) => {
-    try {
-      const existing = JSON.parse(localStorage.getItem('creativva_leads') || '[]');
-      localStorage.setItem('creativva_leads', JSON.stringify([...existing, lead]));
-    } catch {
-      // ignore localStorage errors
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const validation = validateLead(formData, SERVICE_OPTIONS);
+    const validation = validateLead(formData, SERVICE_VALUES);
     if (!validation.ok) {
       setFormError(validation.error);
       return;
     }
-    const newLead: LeadEntry = {
-      ...validation.lead,
-      timestamp: new Date().toISOString(),
-      hideDetails: false,
-    };
-    saveLeadEntry(newLead);
+    saveLead(validation.lead, false);
     setFormError('');
     setSubmitted(true);
   };
@@ -195,9 +161,7 @@ export default function ContactSection() {
                     <p className="font-semibold text-sm" style={{ color: '#F0F0F5' }}>{contact.value}</p>
                   </div>
                   <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: contact.accent === 'purple' ? '#C47AFF' : '#FF8C4A' }}>
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
+                    <ArrowRightIcon size={16} style={{ color: contact.accent === 'purple' ? '#C47AFF' : '#FF8C4A' }} />
                   </div>
                 </a>
               ))}
@@ -224,20 +188,14 @@ export default function ContactSection() {
               }}
             >
               <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ color: '#F0F0F5' }}>
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                  <circle cx="12" cy="12" r="4" />
-                  <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
-                </svg>
+                <InstagramIcon size={20} strokeWidth={1.6} style={{ color: '#F0F0F5' }} />
               </div>
               <div>
                 <p className="text-xs font-bold tracking-wider uppercase mb-0.5" style={{ color: 'rgba(138,139,168,0.7)' }}>Follow Us</p>
                 <p className="font-semibold text-sm" style={{ color: '#F0F0F5' }}>@cre.ativva</p>
               </div>
               <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#C47AFF' }}>
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
+                <ArrowRightIcon size={16} style={{ color: '#C47AFF' }} />
               </div>
             </a>
 
@@ -247,9 +205,7 @@ export default function ContactSection() {
               style={{ boxShadow: '0 0 40px rgba(139,63,212,0.35)' }}
             >
               Ready to grow your brand?
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
+              <ArrowRightIcon size={20} />
             </a>
           </div>
 
@@ -298,13 +254,9 @@ export default function ContactSection() {
                         maxLength={LEAD_FIELD_LIMITS.name}
                         autoComplete="name"
                         className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
-                        style={{
-                          background: 'rgba(22,23,40,0.8)',
-                          border: '1px solid rgba(30,32,64,0.9)',
-                          color: '#F0F0F5',
-                        }}
-                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLInputElement).style.boxShadow = 'none'; }}
+                        style={FIELD_STYLE}
+                        onFocus={handleFieldFocus}
+                        onBlur={handleFieldBlur}
                       />
                     </div>
                     <div>
@@ -321,13 +273,9 @@ export default function ContactSection() {
                         maxLength={LEAD_FIELD_LIMITS.phone}
                         autoComplete="tel"
                         className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
-                        style={{
-                          background: 'rgba(22,23,40,0.8)',
-                          border: '1px solid rgba(30,32,64,0.9)',
-                          color: '#F0F0F5',
-                        }}
-                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLInputElement).style.boxShadow = 'none'; }}
+                        style={FIELD_STYLE}
+                        onFocus={handleFieldFocus}
+                        onBlur={handleFieldBlur}
                       />
                     </div>
                   </div>
@@ -346,13 +294,9 @@ export default function ContactSection() {
                       maxLength={LEAD_FIELD_LIMITS.email}
                       autoComplete="email"
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
-                      style={{
-                        background: 'rgba(22,23,40,0.8)',
-                        border: '1px solid rgba(30,32,64,0.9)',
-                        color: '#F0F0F5',
-                      }}
-                      onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                      onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLInputElement).style.boxShadow = 'none'; }}
+                      style={FIELD_STYLE}
+                      onFocus={handleFieldFocus}
+                      onBlur={handleFieldBlur}
                     />
                   </div>
 
@@ -367,22 +311,18 @@ export default function ContactSection() {
                       required
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none appearance-none"
                       style={{
-                        background: 'rgba(22,23,40,0.8)',
-                        border: '1px solid rgba(30,32,64,0.9)',
+                        ...FIELD_STYLE,
                         color: formData.service ? '#F0F0F5' : 'rgba(138,139,168,0.6)',
                       }}
-                      onFocus={(e) => { (e.target as HTMLSelectElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLSelectElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                      onBlur={(e) => { (e.target as HTMLSelectElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLSelectElement).style.boxShadow = 'none'; }}
+                      onFocus={handleFieldFocus}
+                      onBlur={handleFieldBlur}
                     >
                       <option value="" style={{ background: '#0D0E1F', color: 'rgba(138,139,168,0.7)' }}>Select a service</option>
-                      <option value="social-media-marketing" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Social Media Marketing</option>
-                      <option value="content-creation" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Content Creation</option>
-                      <option value="paid-advertising" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Paid Advertising</option>
-                      <option value="seo-analytics" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>SEO &amp; Analytics</option>
-                      <option value="social-media-management" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Social Media Management</option>
-                      <option value="brand-identity" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Brand Identity &amp; Strategy</option>
-                      <option value="performance-marketing" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Performance Marketing</option>
-                      <option value="video-editing" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Content Creation &amp; Video Editing</option>
+                      {SERVICE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value} style={{ background: '#0D0E1F', color: '#F0F0F5' }}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -398,13 +338,9 @@ export default function ContactSection() {
                       rows={4}
                       maxLength={LEAD_FIELD_LIMITS.message}
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none resize-none"
-                      style={{
-                        background: 'rgba(22,23,40,0.8)',
-                        border: '1px solid rgba(30,32,64,0.9)',
-                        color: '#F0F0F5',
-                      }}
-                      onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLTextAreaElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                      onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLTextAreaElement).style.boxShadow = 'none'; }}
+                      style={FIELD_STYLE}
+                      onFocus={handleFieldFocus}
+                      onBlur={handleFieldBlur}
                     />
                   </div>
 

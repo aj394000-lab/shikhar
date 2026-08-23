@@ -1,6 +1,8 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import AppImage from '@/components/ui/AppImage';
+import { ArrowRightIcon } from '@/components/ui/icons';
+import { gradientTextStyle } from '@/lib/styles';
 
 const PARTICLES = [
   { x: '15%', y: '25%', size: 3, dur: 7, delay: 0 },
@@ -172,10 +174,7 @@ export default function HeroSection() {
               style={{
                 fontSize: 'clamp(3.4rem, 8.5vw, 8rem)',
                 letterSpacing: '-0.035em',
-                background: 'linear-gradient(135deg, #9B4FE4 0%, #C47AFF 40%, #FF6B1A 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                ...gradientTextStyle('linear-gradient(135deg, #9B4FE4 0%, #C47AFF 40%, #FF6B1A 100%)'),
               }}
             >
               Journey Of Luxury
@@ -213,9 +212,7 @@ export default function HeroSection() {
               style={{ boxShadow: '0 0 40px rgba(139,63,212,0.45)' }}
             >
               Start Your Journey
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
+              <ArrowRightIcon size={16} />
             </a>
             <a
               href="#portfolio"
@@ -251,10 +248,7 @@ export default function HeroSection() {
                   <p
                     className="text-3xl font-extrabold"
                     style={{
-                      background: 'linear-gradient(135deg, #C47AFF, #FF6B1A)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
+                      ...gradientTextStyle('linear-gradient(135deg, #C47AFF, #FF6B1A)'),
                       letterSpacing: '-0.02em',
                     }}
                   >

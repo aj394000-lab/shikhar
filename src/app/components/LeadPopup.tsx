@@ -1,32 +1,17 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { LEAD_FIELD_LIMITS, validateLead, type LeadInput } from '@/lib/leadValidation';
-
-type LeadData = LeadInput;
-
-const SERVICE_OPTIONS = [
-  'social-media',
-  'content-creation',
-  'paid-ads',
-  'seo',
-  'brand-identity',
-  'performance',
-  'video-editing',
-] as const;
+import { useLeadForm, LeadFormChangeEvent } from '@/hooks/useLeadForm';
+import { saveLead } from '@/lib/leads';
+import { LEAD_FIELD_LIMITS, validateLead } from '@/lib/leadValidation';
+import { SERVICE_OPTIONS, SERVICE_VALUES } from '@/lib/services';
 
 export default function LeadPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
-  const [formData, setFormData] = useState<LeadData>({
-    name: '',
-    phone: '',
-    email: '',
-    service: '',
-    message: '',
-  });
+  const { formData, handleChange: handleFormChange } = useLeadForm();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -42,20 +27,13 @@ export default function LeadPopup() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const validation = validateLead(formData, SERVICE_OPTIONS);
+    const validation = validateLead(formData, SERVICE_VALUES);
     if (!validation.ok) {
       setFormError(validation.error);
       return;
     }
-    // Save to localStorage with timestamp
-    try {
-      const existing = JSON.parse(localStorage.getItem('creativva_leads') || '[]');
-      // mark popup submissions to hide details in admin
-      const newLead = { ...validation.lead, timestamp: new Date().toISOString(), hideDetails: true };
-      localStorage.setItem('creativva_leads', JSON.stringify([...existing, newLead]));
-    } catch {
-      // silently fail
-    }
+    // mark popup submissions to hide details in admin
+    saveLead(validation.lead, true);
     setFormError('');
     setIsSubmitted(true);
     setTimeout(() => {
@@ -64,8 +42,8 @@ export default function LeadPopup() {
     }, 2500);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e: LeadFormChangeEvent) => {
+    handleFormChange(e);
     if (formError) setFormError('');
   };
 
@@ -172,13 +150,11 @@ export default function LeadPopup() {
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm focus:outline-none focus:border-primary transition-colors appearance-none"
                   >
                     <option value="" className="bg-card text-muted-foreground">Select a Service *</option>
-                    <option value="social-media" className="bg-card">Social Media Marketing</option>
-                    <option value="content-creation" className="bg-card">Content Creation</option>
-                    <option value="paid-ads" className="bg-card">Paid Advertising</option>
-                    <option value="seo" className="bg-card">SEO &amp; Analytics</option>
-                    <option value="brand-identity" className="bg-card">Brand Identity &amp; Strategy</option>
-                    <option value="performance" className="bg-card">Performance Marketing</option>
-                    <option value="video-editing" className="bg-card">Video Editing</option>
+                    {SERVICE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-card">
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>

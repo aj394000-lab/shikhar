@@ -2,6 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import AppImage from '@/components/ui/AppImage';
+import { InstagramIcon } from '@/components/ui/icons';
 
 export default function Footer() {
   return (
@@ -69,11 +70,7 @@ export default function Footer() {
                 }}
                 aria-label="Instagram"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                  <circle cx="12" cy="12" r="4" />
-                  <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
-                </svg>
+                <InstagramIcon size={16} />
               </a>
               <a
                 href="mailto:creativvalab@gmail.com"

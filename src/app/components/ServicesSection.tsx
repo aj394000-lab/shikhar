@@ -1,5 +1,7 @@
 'use client';
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
+import { ArrowRightIcon } from '@/components/ui/icons';
+import { useRevealCards } from '@/hooks/useRevealOnScroll';
 
 const services = [
   {
@@ -111,23 +113,7 @@ export default function ServicesSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-slide-up');
-            (entry.target as HTMLElement).style.opacity = '1';
-          }
-        });
-      },
-      { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
-    );
-    cardRefs.current.forEach((card) => {
-      if (card) observer.observe(card);
-    });
-    return () => observer.disconnect();
-  }, []);
+  useRevealCards(cardRefs, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
 
   return (
     <section id="services" ref={sectionRef} className="py-28 relative overflow-hidden aurora-bg">
@@ -202,9 +188,7 @@ export default function ServicesSection() {
                   style={{ color: service.accent === 'purple' ? '#C47AFF' : '#FF8C4A' }}
                 >
                   Learn more
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
+                  <ArrowRightIcon size={12} />
                 </div>
 
                 {/* Bottom glow line on hover */}
