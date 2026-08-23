@@ -1,15 +1,17 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { useLeadForm } from '@/hooks/useLeadForm';
+import { useLeadForm, LeadFormChangeEvent } from '@/hooks/useLeadForm';
 import { saveLead } from '@/lib/leads';
-import { SERVICE_OPTIONS } from '@/lib/services';
+import { LEAD_FIELD_LIMITS, validateLead } from '@/lib/leadValidation';
+import { SERVICE_OPTIONS, SERVICE_VALUES } from '@/lib/services';
 
 export default function LeadPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const { formData, handleChange } = useLeadForm();
+  const [formError, setFormError] = useState('');
+  const { formData, handleChange: handleFormChange } = useLeadForm();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -25,14 +27,24 @@ export default function LeadPopup() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = validateLead(formData, SERVICE_VALUES);
+    if (!validation.ok) {
+      setFormError(validation.error);
+      return;
+    }
     // mark popup submissions to hide details in admin
-    saveLead(formData, true);
-    console.log('Lead captured:', formData);
+    saveLead(validation.lead, true);
+    setFormError('');
     setIsSubmitted(true);
     setTimeout(() => {
       setIsVisible(false);
       setIsDismissed(true);
     }, 2500);
+  };
+
+  const handleChange = (e: LeadFormChangeEvent) => {
+    handleFormChange(e);
+    if (formError) setFormError('');
   };
 
   if (!isVisible) return null;
@@ -98,6 +110,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Your Full Name *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.name}
+                    autoComplete="name"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -109,6 +123,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Phone Number *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.phone}
+                    autoComplete="tel"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -120,6 +136,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Email Address *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.email}
+                    autoComplete="email"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -146,9 +164,13 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Tell us about your project (optional)"
                     rows={3}
+                    maxLength={LEAD_FIELD_LIMITS.message}
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors resize-none"
                   />
                 </div>
+                {formError && (
+                  <p className="text-xs" role="alert" style={{ color: '#FF8C4A' }}>{formError}</p>
+                )}
                 <button
                   type="submit"
                   className="w-full cta-gradient-btn text-white font-bold py-4 rounded-xl text-sm tracking-wide"

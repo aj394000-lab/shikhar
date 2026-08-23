@@ -9,6 +9,8 @@ export const SERVICE_OPTIONS = [
   { value: 'video-editing', label: 'Video Editing' },
 ] as const;
 
+export const SERVICE_VALUES: readonly string[] = SERVICE_OPTIONS.map((option) => option.value);
+
 const LEGACY_SERVICE_LABELS: Record<string, string> = {
   'social-media-marketing': 'Social Media Marketing',
   'paid-advertising': 'Paid Advertising',

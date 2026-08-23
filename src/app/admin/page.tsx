@@ -1,35 +1,17 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import AppImage from '@/components/ui/AppImage';
 import { Lead, persistLeads, readStoredLeads } from '@/lib/leads';
 import { SERVICE_LABELS } from '@/lib/services';
 import { gradientTextStyle } from '@/lib/styles';
 
-const ADMIN_LOCK_KEY = 'creativva_admin_unlocked';
-const ADMIN_SESSION_KEY = 'creativva_admin_session';
-const DEFAULT_ADMIN_USERNAME = 'ShikharBoss';
-const DEFAULT_ADMIN_PASSWORD = 'creativva2006';
-
-const resolveAdminCredentials = () => {
-  const configuredUsername = process.env.NEXT_PUBLIC_ADMIN_USERNAME?.trim();
-  const configuredPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD?.trim();
-
-  return {
-    username: configuredUsername || DEFAULT_ADMIN_USERNAME,
-    password: configuredPassword || DEFAULT_ADMIN_PASSWORD,
-  };
-};
-
 export default function AdminPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
 
   const createLeadId = () => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -41,12 +23,6 @@ export default function AdminPage() {
   useEffect(() => {
     setMounted(true);
     try {
-      const persisted = window.localStorage.getItem(ADMIN_LOCK_KEY);
-      const sessionValue = window.localStorage.getItem(ADMIN_SESSION_KEY);
-      if (persisted === 'true' || sessionValue === 'true') {
-        setIsUnlocked(true);
-      }
-
       const parsed = readStoredLeads();
       if (parsed.length > 0) {
         const normalized = parsed.map((lead) => ({ ...lead, id: lead.id || createLeadId() }));
@@ -73,33 +49,12 @@ export default function AdminPage() {
     );
   });
 
-  const handleUnlock = (event: React.FormEvent) => {
-    event.preventDefault();
-    const credentials = resolveAdminCredentials();
-
-    if (username === credentials.username && password === credentials.password) {
-      if (rememberMe) {
-        window.localStorage.setItem(ADMIN_LOCK_KEY, 'true');
-        window.localStorage.setItem(ADMIN_SESSION_KEY, 'true');
-      } else {
-        window.localStorage.removeItem(ADMIN_LOCK_KEY);
-        window.localStorage.setItem(ADMIN_SESSION_KEY, 'true');
-      }
-      setIsUnlocked(true);
-      setPasswordError('');
-    } else {
-      setPasswordError('Incorrect username or password. Try again.');
+  const lockAdmin = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } finally {
+      router.replace('/admin/login');
     }
-  };
-
-  const lockAdmin = () => {
-    window.localStorage.removeItem(ADMIN_LOCK_KEY);
-    window.localStorage.removeItem(ADMIN_SESSION_KEY);
-    setIsUnlocked(false);
-    setUsername('');
-    setPassword('');
-    setRememberMe(false);
-    setPasswordError('');
   };
 
   const toggleSelect = (leadId: string) => {
@@ -186,92 +141,6 @@ export default function AdminPage() {
   };
 
   if (!mounted) return null;
-
-  if (!isUnlocked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: '#050508', color: '#F5F5F7' }}>
-        <div className="w-full max-w-md rounded-3xl border p-8 shadow-2xl" style={{ background: 'rgba(19,20,40,0.95)', borderColor: 'rgba(42,43,69,0.7)', boxShadow: '0 0 60px rgba(123,47,190,0.18)' }}>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 relative">
-              <AppImage
-                src="/assets/images/image-1785475268438.png"
-                alt="Creativva logo"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: 'rgba(245,245,247,0.45)' }}>Restricted Area</p>
-              <h1 className="text-xl font-extrabold" style={{ color: '#F5F5F7' }}>Admin Access</h1>
-            </div>
-          </div>
-
-          <p className="text-sm leading-6 mb-6" style={{ color: 'rgba(245,245,247,0.65)' }}>
-            Enter the admin password to view lead submissions and manage entries.
-          </p>
-
-          <form onSubmit={handleUnlock} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(245,245,247,0.45)' }}>
-                Username
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                  if (passwordError) setPasswordError('');
-                }}
-                placeholder="Enter username"
-                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                style={{ background: 'rgba(30,31,53,0.8)', borderColor: 'rgba(42,43,69,0.8)', color: '#F5F5F7' }}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(245,245,247,0.45)' }}>
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (passwordError) setPasswordError('');
-                }}
-                placeholder="Enter password"
-                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                style={{ background: 'rgba(30,31,53,0.8)', borderColor: 'rgba(42,43,69,0.8)', color: '#F5F5F7' }}
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'rgba(245,245,247,0.7)' }}>
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-600 bg-transparent accent-purple-500"
-              />
-              Remember me on this browser
-            </label>
-
-            {passwordError && (
-              <p className="text-sm" style={{ color: '#F97316' }}>{passwordError}</p>
-            )}
-
-            <button
-              type="submit"
-              className="w-full rounded-xl px-4 py-3 font-bold text-sm transition-transform duration-200 hover:scale-[1.01]"
-              style={{ background: 'linear-gradient(135deg, #7B2FBE, #F97316)', color: '#FFFFFF' }}
-            >
-              Unlock Admin Panel
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen" style={{ background: '#050508', color: '#F5F5F7' }}>

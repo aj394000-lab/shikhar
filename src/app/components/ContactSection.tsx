@@ -2,10 +2,11 @@
 import React, { useState, useRef } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { ArrowRightIcon, InstagramIcon } from '@/components/ui/icons';
-import { useLeadForm } from '@/hooks/useLeadForm';
+import { useLeadForm, LeadFormChangeEvent } from '@/hooks/useLeadForm';
 import { useSectionReveal } from '@/hooks/useRevealOnScroll';
 import { saveLead } from '@/lib/leads';
-import { SERVICE_OPTIONS } from '@/lib/services';
+import { LEAD_FIELD_LIMITS, validateLead } from '@/lib/leadValidation';
+import { SERVICE_OPTIONS, SERVICE_VALUES } from '@/lib/services';
 
 const FIELD_STYLE: React.CSSProperties = {
   background: 'rgba(22,23,40,0.8)',
@@ -27,18 +28,29 @@ export default function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
-  const { formData, handleChange } = useLeadForm();
+  const { formData, handleChange: handleFormChange } = useLeadForm();
   const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState('');
 
   useSectionReveal(sectionRef, [
     { ref: leftRef, className: 'animate-slide-left' },
     { ref: rightRef, className: 'animate-slide-right' },
   ]);
 
+  const handleChange = (e: LeadFormChangeEvent) => {
+    handleFormChange(e);
+    if (formError) setFormError('');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    saveLead(formData, false);
-    console.log('Contact form submission:', formData);
+    const validation = validateLead(formData, SERVICE_VALUES);
+    if (!validation.ok) {
+      setFormError(validation.error);
+      return;
+    }
+    saveLead(validation.lead, false);
+    setFormError('');
     setSubmitted(true);
   };
 
@@ -239,6 +251,8 @@ export default function ContactSection() {
                         onChange={handleChange}
                         placeholder="Your name"
                         required
+                        maxLength={LEAD_FIELD_LIMITS.name}
+                        autoComplete="name"
                         className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                         style={FIELD_STYLE}
                         onFocus={handleFieldFocus}
@@ -256,6 +270,8 @@ export default function ContactSection() {
                         onChange={handleChange}
                         placeholder="+91 XXXXX XXXXX"
                         required
+                        maxLength={LEAD_FIELD_LIMITS.phone}
+                        autoComplete="tel"
                         className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                         style={FIELD_STYLE}
                         onFocus={handleFieldFocus}
@@ -275,6 +291,8 @@ export default function ContactSection() {
                       onChange={handleChange}
                       placeholder="your@email.com"
                       required
+                      maxLength={LEAD_FIELD_LIMITS.email}
+                      autoComplete="email"
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                       style={FIELD_STYLE}
                       onFocus={handleFieldFocus}
@@ -318,12 +336,17 @@ export default function ContactSection() {
                       onChange={handleChange}
                       placeholder="What are you looking to achieve? Any specific goals or timelines?"
                       rows={4}
+                      maxLength={LEAD_FIELD_LIMITS.message}
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none resize-none"
                       style={FIELD_STYLE}
                       onFocus={handleFieldFocus}
                       onBlur={handleFieldBlur}
                     />
                   </div>
+
+                  {formError && (
+                    <p className="text-xs" role="alert" style={{ color: '#FF8C4A' }}>{formError}</p>
+                  )}
 
                   <button
                     type="submit"
