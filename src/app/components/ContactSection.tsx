@@ -1,25 +1,13 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-
-interface FormState {
-  name: string;
-  phone: string;
-  email: string;
-  service: string;
-  message: string;
-}
-
-interface LeadEntry extends FormState {
-  timestamp: string;
-  hideDetails?: boolean;
-}
+import { appendLead, type Lead } from '@/lib/leads';
 
 export default function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
-  const [formData, setFormData] = useState<FormState>({
+  const [formData, setFormData] = useState<Omit<Lead, 'id' | 'timestamp'>>({
     name: '',
     phone: '',
     email: '',
@@ -27,6 +15,7 @@ export default function ContactSection() {
     message: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -50,28 +39,26 @@ export default function ContactSection() {
     return () => observer.disconnect();
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const saveLeadEntry = (lead: LeadEntry) => {
-    try {
-      const existing = JSON.parse(localStorage.getItem('creativva_leads') || '[]');
-      localStorage.setItem('creativva_leads', JSON.stringify([...existing, lead]));
-    } catch {
-      // ignore localStorage errors
-    }
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newLead: LeadEntry = {
+    const result = appendLead({
       ...formData,
       timestamp: new Date().toISOString(),
       hideDetails: false,
-    };
-    saveLeadEntry(newLead);
-    console.log('Contact form submission:', formData);
+    });
+    if (!result.ok) {
+      setSubmitError(result.error.message);
+      console.error('Contact form submission failed:', result.error.cause);
+      return;
+    }
+
+    setSubmitError('');
     setSubmitted(true);
   };
 
@@ -79,21 +66,33 @@ export default function ContactSection() {
     <section id="contact" ref={sectionRef} className="py-28 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="divider-gradient absolute top-0 left-0 right-0" />
-        <div className="orb-purple absolute opacity-25" style={{ width: '600px', height: '600px', top: '0', left: '-200px' }} />
-        <div className="orb-orange absolute opacity-15" style={{ width: '450px', height: '450px', bottom: '0', right: '-120px' }} />
+        <div
+          className="orb-purple absolute opacity-25"
+          style={{ width: '600px', height: '600px', top: '0', left: '-200px' }}
+        />
+        <div
+          className="orb-orange absolute opacity-15"
+          style={{ width: '450px', height: '450px', bottom: '0', right: '-120px' }}
+        />
       </div>
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         {/* Header */}
         <div className="text-center mb-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full tag-pill-orange text-xs font-bold tracking-[0.2em] uppercase mb-5">
-            <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: '#FF8C4A', boxShadow: '0 0 6px rgba(255,140,74,0.9)' }} />
+            <span
+              className="w-1.5 h-1.5 rounded-full inline-block"
+              style={{ background: '#FF8C4A', boxShadow: '0 0 6px rgba(255,140,74,0.9)' }}
+            />
             Let&apos;s Connect
           </div>
           <h2 className="text-section-title" style={{ color: '#F0F0F5' }}>
             Ready to grow your <span className="gradient-text-purple-orange">brand?</span>
           </h2>
-          <p className="text-lg mt-5 max-w-2xl mx-auto leading-relaxed" style={{ color: 'rgba(138,139,168,0.9)' }}>
+          <p
+            className="text-lg mt-5 max-w-2xl mx-auto leading-relaxed"
+            style={{ color: 'rgba(138,139,168,0.9)' }}
+          >
             Let&apos;s build something remarkable together. Reach out and let&apos;s talk strategy.
           </p>
         </div>
@@ -102,17 +101,28 @@ export default function ContactSection() {
           {/* Left: Contact info */}
           <div ref={leftRef} className="space-y-6" style={{ opacity: 0 }}>
             {/* Big tagline */}
-            <div className="border-gradient rounded-3xl p-9 relative overflow-hidden" style={{ background: 'var(--card)' }}>
+            <div
+              className="border-gradient rounded-3xl p-9 relative overflow-hidden"
+              style={{ background: 'var(--card)' }}
+            >
               <div className="absolute inset-0 gradient-bg-card" />
-              <div className="orb-purple absolute opacity-20 pointer-events-none" style={{ width: '200px', height: '200px', top: '-50px', right: '-50px' }} />
+              <div
+                className="orb-purple absolute opacity-20 pointer-events-none"
+                style={{ width: '200px', height: '200px', top: '-50px', right: '-50px' }}
+              />
               <div className="relative z-10">
-                <p className="text-3xl font-extrabold leading-tight mb-4" style={{ color: '#F0F0F5' }}>
+                <p
+                  className="text-3xl font-extrabold leading-tight mb-4"
+                  style={{ color: '#F0F0F5' }}
+                >
                   Where <span className="gradient-text-purple-orange">Creativity</span>{' '}
-                  <span className="font-light italic" style={{ color: '#F0F0F5' }}>Meets</span>{' '}
+                  <span className="font-light italic" style={{ color: '#F0F0F5' }}>
+                    Meets
+                  </span>{' '}
                   <span style={{ color: '#FF6B1A' }}>Results.</span>
                 </p>
                 <p className="leading-relaxed" style={{ color: 'rgba(138,139,168,0.85)' }}>
-                  We don&apos;t just run campaigns — we build brands that people remember and trust. 
+                  We don&apos;t just run campaigns — we build brands that people remember and trust.
                   Your brand&apos;s digital transformation starts with one conversation.
                 </p>
               </div>
@@ -155,9 +165,15 @@ export default function ContactSection() {
                   }}
                   onMouseEnter={(e) => {
                     const el = e.currentTarget as HTMLAnchorElement;
-                    el.style.borderColor = contact.accent === 'purple' ? 'rgba(139,63,212,0.45)' : 'rgba(255,107,26,0.45)';
+                    el.style.borderColor =
+                      contact.accent === 'purple'
+                        ? 'rgba(139,63,212,0.45)'
+                        : 'rgba(255,107,26,0.45)';
                     el.style.transform = 'translateY(-2px)';
-                    el.style.boxShadow = contact.accent === 'purple' ?'0 8px 30px rgba(139,63,212,0.15)' :'0 8px 30px rgba(255,107,26,0.12)';
+                    el.style.boxShadow =
+                      contact.accent === 'purple'
+                        ? '0 8px 30px rgba(139,63,212,0.15)'
+                        : '0 8px 30px rgba(255,107,26,0.12)';
                   }}
                   onMouseLeave={(e) => {
                     const el = e.currentTarget as HTMLAnchorElement;
@@ -178,11 +194,26 @@ export default function ContactSection() {
                     />
                   </div>
                   <div>
-                    <p className="text-xs font-bold tracking-wider uppercase mb-0.5" style={{ color: 'rgba(138,139,168,0.7)' }}>{contact.label}</p>
-                    <p className="font-semibold text-sm" style={{ color: '#F0F0F5' }}>{contact.value}</p>
+                    <p
+                      className="text-xs font-bold tracking-wider uppercase mb-0.5"
+                      style={{ color: 'rgba(138,139,168,0.7)' }}
+                    >
+                      {contact.label}
+                    </p>
+                    <p className="font-semibold text-sm" style={{ color: '#F0F0F5' }}>
+                      {contact.value}
+                    </p>
                   </div>
                   <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: contact.accent === 'purple' ? '#C47AFF' : '#FF8C4A' }}>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      style={{ color: contact.accent === 'purple' ? '#C47AFF' : '#FF8C4A' }}
+                    >
                       <path d="M5 12h14M12 5l7 7-7 7" />
                     </svg>
                   </div>
@@ -210,19 +241,45 @@ export default function ContactSection() {
                 el.style.boxShadow = 'none';
               }}
             >
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ color: '#F0F0F5' }}>
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+                style={{ background: 'rgba(255,255,255,0.07)' }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  style={{ color: '#F0F0F5' }}
+                >
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                   <circle cx="12" cy="12" r="4" />
                   <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
                 </svg>
               </div>
               <div>
-                <p className="text-xs font-bold tracking-wider uppercase mb-0.5" style={{ color: 'rgba(138,139,168,0.7)' }}>Follow Us</p>
-                <p className="font-semibold text-sm" style={{ color: '#F0F0F5' }}>@cre.ativva</p>
+                <p
+                  className="text-xs font-bold tracking-wider uppercase mb-0.5"
+                  style={{ color: 'rgba(138,139,168,0.7)' }}
+                >
+                  Follow Us
+                </p>
+                <p className="font-semibold text-sm" style={{ color: '#F0F0F5' }}>
+                  @cre.ativva
+                </p>
               </div>
               <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#C47AFF' }}>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  style={{ color: '#C47AFF' }}
+                >
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </div>
@@ -234,7 +291,14 @@ export default function ContactSection() {
               style={{ boxShadow: '0 0 40px rgba(139,63,212,0.35)' }}
             >
               Ready to grow your brand?
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </a>
@@ -247,9 +311,14 @@ export default function ContactSection() {
             style={{ opacity: 0, background: 'var(--card)' }}
           >
             <div className="absolute inset-0 gradient-bg-card" />
-            <div className="orb-orange absolute opacity-10 pointer-events-none" style={{ width: '250px', height: '250px', bottom: '-80px', right: '-80px' }} />
+            <div
+              className="orb-orange absolute opacity-10 pointer-events-none"
+              style={{ width: '250px', height: '250px', bottom: '-80px', right: '-80px' }}
+            />
             <div className="relative z-10">
-              <h3 className="text-2xl font-extrabold mb-2" style={{ color: '#F0F0F5' }}>Book a Strategy Call</h3>
+              <h3 className="text-2xl font-extrabold mb-2" style={{ color: '#F0F0F5' }}>
+                Book a Strategy Call
+              </h3>
               <p className="text-sm mb-8" style={{ color: 'rgba(138,139,168,0.8)' }}>
                 Fill in your details and we&apos;ll reach out within 24 hours.
               </p>
@@ -265,14 +334,41 @@ export default function ContactSection() {
                   >
                     <Icon name="CheckIcon" size={36} className="text-white" />
                   </div>
-                  <h4 className="text-xl font-bold mb-2" style={{ color: '#F0F0F5' }}>Message Received!</h4>
-                  <p style={{ color: 'rgba(138,139,168,0.8)' }}>We&apos;ll get back to you within 24 hours.</p>
+                  <h4 className="text-xl font-bold mb-2" style={{ color: '#F0F0F5' }}>
+                    Message Received!
+                  </h4>
+                  <p style={{ color: 'rgba(138,139,168,0.8)' }}>
+                    We&apos;ll get back to you within 24 hours.
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  {submitError && (
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-200"
+                    >
+                      <p>{submitError}</p>
+                      <p className="mt-2">
+                        Please try again, or call{' '}
+                        <a href="tel:+917415072820" className="font-semibold underline">
+                          +91 7415072820
+                        </a>{' '}
+                        or email{' '}
+                        <a href="mailto:creativvalab@gmail.com" className="font-semibold underline">
+                          creativvalab@gmail.com
+                        </a>
+                        .
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold tracking-wider uppercase mb-2 block" style={{ color: 'rgba(138,139,168,0.7)' }}>
+                      <label
+                        className="text-xs font-bold tracking-wider uppercase mb-2 block"
+                        style={{ color: 'rgba(138,139,168,0.7)' }}
+                      >
                         Full Name *
                       </label>
                       <input
@@ -288,12 +384,22 @@ export default function ContactSection() {
                           border: '1px solid rgba(30,32,64,0.9)',
                           color: '#F0F0F5',
                         }}
-                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLInputElement).style.boxShadow = 'none'; }}
+                        onFocus={(e) => {
+                          (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)';
+                          (e.target as HTMLInputElement).style.boxShadow =
+                            '0 0 0 3px rgba(139,63,212,0.1)';
+                        }}
+                        onBlur={(e) => {
+                          (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)';
+                          (e.target as HTMLInputElement).style.boxShadow = 'none';
+                        }}
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold tracking-wider uppercase mb-2 block" style={{ color: 'rgba(138,139,168,0.7)' }}>
+                      <label
+                        className="text-xs font-bold tracking-wider uppercase mb-2 block"
+                        style={{ color: 'rgba(138,139,168,0.7)' }}
+                      >
                         Phone Number *
                       </label>
                       <input
@@ -309,14 +415,24 @@ export default function ContactSection() {
                           border: '1px solid rgba(30,32,64,0.9)',
                           color: '#F0F0F5',
                         }}
-                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLInputElement).style.boxShadow = 'none'; }}
+                        onFocus={(e) => {
+                          (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)';
+                          (e.target as HTMLInputElement).style.boxShadow =
+                            '0 0 0 3px rgba(139,63,212,0.1)';
+                        }}
+                        onBlur={(e) => {
+                          (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)';
+                          (e.target as HTMLInputElement).style.boxShadow = 'none';
+                        }}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold tracking-wider uppercase mb-2 block" style={{ color: 'rgba(138,139,168,0.7)' }}>
+                    <label
+                      className="text-xs font-bold tracking-wider uppercase mb-2 block"
+                      style={{ color: 'rgba(138,139,168,0.7)' }}
+                    >
                       Email Address *
                     </label>
                     <input
@@ -332,13 +448,23 @@ export default function ContactSection() {
                         border: '1px solid rgba(30,32,64,0.9)',
                         color: '#F0F0F5',
                       }}
-                      onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                      onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLInputElement).style.boxShadow = 'none'; }}
+                      onFocus={(e) => {
+                        (e.target as HTMLInputElement).style.borderColor = 'rgba(139,63,212,0.6)';
+                        (e.target as HTMLInputElement).style.boxShadow =
+                          '0 0 0 3px rgba(139,63,212,0.1)';
+                      }}
+                      onBlur={(e) => {
+                        (e.target as HTMLInputElement).style.borderColor = 'rgba(30,32,64,0.9)';
+                        (e.target as HTMLInputElement).style.boxShadow = 'none';
+                      }}
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold tracking-wider uppercase mb-2 block" style={{ color: 'rgba(138,139,168,0.7)' }}>
+                    <label
+                      className="text-xs font-bold tracking-wider uppercase mb-2 block"
+                      style={{ color: 'rgba(138,139,168,0.7)' }}
+                    >
                       Service Interested In *
                     </label>
                     <select
@@ -352,23 +478,78 @@ export default function ContactSection() {
                         border: '1px solid rgba(30,32,64,0.9)',
                         color: formData.service ? '#F0F0F5' : 'rgba(138,139,168,0.6)',
                       }}
-                      onFocus={(e) => { (e.target as HTMLSelectElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLSelectElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                      onBlur={(e) => { (e.target as HTMLSelectElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLSelectElement).style.boxShadow = 'none'; }}
+                      onFocus={(e) => {
+                        (e.target as HTMLSelectElement).style.borderColor = 'rgba(139,63,212,0.6)';
+                        (e.target as HTMLSelectElement).style.boxShadow =
+                          '0 0 0 3px rgba(139,63,212,0.1)';
+                      }}
+                      onBlur={(e) => {
+                        (e.target as HTMLSelectElement).style.borderColor = 'rgba(30,32,64,0.9)';
+                        (e.target as HTMLSelectElement).style.boxShadow = 'none';
+                      }}
                     >
-                      <option value="" style={{ background: '#0D0E1F', color: 'rgba(138,139,168,0.7)' }}>Select a service</option>
-                      <option value="social-media-marketing" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Social Media Marketing</option>
-                      <option value="content-creation" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Content Creation</option>
-                      <option value="paid-advertising" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Paid Advertising</option>
-                      <option value="seo-analytics" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>SEO &amp; Analytics</option>
-                      <option value="social-media-management" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Social Media Management</option>
-                      <option value="brand-identity" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Brand Identity &amp; Strategy</option>
-                      <option value="performance-marketing" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Performance Marketing</option>
-                      <option value="video-editing" style={{ background: '#0D0E1F', color: '#F0F0F5' }}>Content Creation &amp; Video Editing</option>
+                      <option
+                        value=""
+                        style={{ background: '#0D0E1F', color: 'rgba(138,139,168,0.7)' }}
+                      >
+                        Select a service
+                      </option>
+                      <option
+                        value="social-media-marketing"
+                        style={{ background: '#0D0E1F', color: '#F0F0F5' }}
+                      >
+                        Social Media Marketing
+                      </option>
+                      <option
+                        value="content-creation"
+                        style={{ background: '#0D0E1F', color: '#F0F0F5' }}
+                      >
+                        Content Creation
+                      </option>
+                      <option
+                        value="paid-advertising"
+                        style={{ background: '#0D0E1F', color: '#F0F0F5' }}
+                      >
+                        Paid Advertising
+                      </option>
+                      <option
+                        value="seo-analytics"
+                        style={{ background: '#0D0E1F', color: '#F0F0F5' }}
+                      >
+                        SEO &amp; Analytics
+                      </option>
+                      <option
+                        value="social-media-management"
+                        style={{ background: '#0D0E1F', color: '#F0F0F5' }}
+                      >
+                        Social Media Management
+                      </option>
+                      <option
+                        value="brand-identity"
+                        style={{ background: '#0D0E1F', color: '#F0F0F5' }}
+                      >
+                        Brand Identity &amp; Strategy
+                      </option>
+                      <option
+                        value="performance-marketing"
+                        style={{ background: '#0D0E1F', color: '#F0F0F5' }}
+                      >
+                        Performance Marketing
+                      </option>
+                      <option
+                        value="video-editing"
+                        style={{ background: '#0D0E1F', color: '#F0F0F5' }}
+                      >
+                        Content Creation &amp; Video Editing
+                      </option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold tracking-wider uppercase mb-2 block" style={{ color: 'rgba(138,139,168,0.7)' }}>
+                    <label
+                      className="text-xs font-bold tracking-wider uppercase mb-2 block"
+                      style={{ color: 'rgba(138,139,168,0.7)' }}
+                    >
                       Tell Us About Your Project
                     </label>
                     <textarea
@@ -383,8 +564,16 @@ export default function ContactSection() {
                         border: '1px solid rgba(30,32,64,0.9)',
                         color: '#F0F0F5',
                       }}
-                      onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(139,63,212,0.6)'; (e.target as HTMLTextAreaElement).style.boxShadow = '0 0 0 3px rgba(139,63,212,0.1)'; }}
-                      onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLTextAreaElement).style.boxShadow = 'none'; }}
+                      onFocus={(e) => {
+                        (e.target as HTMLTextAreaElement).style.borderColor =
+                          'rgba(139,63,212,0.6)';
+                        (e.target as HTMLTextAreaElement).style.boxShadow =
+                          '0 0 0 3px rgba(139,63,212,0.1)';
+                      }}
+                      onBlur={(e) => {
+                        (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(30,32,64,0.9)';
+                        (e.target as HTMLTextAreaElement).style.boxShadow = 'none';
+                      }}
                     />
                   </div>
 
