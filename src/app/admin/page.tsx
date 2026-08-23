@@ -83,7 +83,7 @@ export default function AdminPage() {
     const { leads: storedLeads, skippedCount } = result.value;
     setLeadWarning(
       skippedCount > 0
-        ? `${skippedCount} saved entr${skippedCount === 1 ? 'y was' : 'ies were'} unreadable and are not shown.`
+        ? `${skippedCount} saved ${skippedCount === 1 ? 'entry is' : 'entries are'} unreadable and not shown.`
         : ''
     );
     const needsIdBackfill = storedLeads.some((lead) => !lead.id);
