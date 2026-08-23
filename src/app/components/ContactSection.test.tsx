@@ -34,7 +34,9 @@ beforeEach(() => {
 
 const fillForm = () => {
   fireEvent.change(screen.getByPlaceholderText('Your name'), { target: { value: 'Casey' } });
-  fireEvent.change(screen.getByPlaceholderText('+91 XXXXX XXXXX'), { target: { value: '999' } });
+  fireEvent.change(screen.getByPlaceholderText('+91 XXXXX XXXXX'), {
+    target: { value: '9999999' },
+  });
   fireEvent.change(screen.getByPlaceholderText('your@email.com'), {
     target: { value: 'casey@example.com' },
   });
@@ -131,6 +133,66 @@ it('controls fields and appends a visible lead on submit', async () => {
   expect(saved[1]).toMatchObject({ name: 'Casey', service: 'seo-analytics', hideDetails: false });
   expect(saved[1].timestamp).toEqual(expect.any(String));
 });
+
+it('trims and caps valid fields before storing the lead', async () => {
+  render(<ContactSection />);
+  fireEvent.change(screen.getByPlaceholderText('Your name'), {
+    target: { value: `  ${'A'.repeat(90)}  ` },
+  });
+  fireEvent.change(screen.getByPlaceholderText('+91 XXXXX XXXXX'), {
+    target: { value: ' +91 7415072820 ' },
+  });
+  fireEvent.change(screen.getByPlaceholderText('your@email.com'), {
+    target: { value: ' casey@example.com ' },
+  });
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'seo-analytics' } });
+  fireEvent.change(screen.getByPlaceholderText(/What are you looking/), {
+    target: { value: ` ${'B'.repeat(1100)} ` },
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: /Send My Inquiry/ }));
+  await waitFor(() => expect(screen.getByText('Message Received!')).toBeInTheDocument());
+
+  const saved = JSON.parse(localStorage.getItem('creativva_leads') || '[]');
+  expect(saved[0]).toMatchObject({
+    name: 'A'.repeat(80),
+    phone: '+91 7415072820',
+    email: 'casey@example.com',
+    service: 'seo-analytics',
+    message: 'B'.repeat(1000),
+  });
+});
+
+it.each([
+  ['short name', 'name', 'A', 'Please enter your full name.'],
+  ['malformed email', 'email', 'not-an-email', 'Please enter a valid email address.'],
+  ['bad phone', 'phone', 'abc', 'Please enter a valid phone number.'],
+  ['unknown service', 'service', 'not-a-service', 'Please select a service from the list.'],
+] as const)(
+  'rejects %s, stores nothing, and clears the error on change',
+  async (_, field, value, error) => {
+    render(<ContactSection />);
+    fillForm();
+    fireEvent.change(
+      field === 'name'
+        ? screen.getByPlaceholderText('Your name')
+        : field === 'email'
+          ? screen.getByPlaceholderText('your@email.com')
+          : field === 'phone'
+            ? screen.getByPlaceholderText('+91 XXXXX XXXXX')
+            : screen.getByRole('combobox'),
+      { target: { value } }
+    );
+    fireEvent.submit(screen.getByRole('button', { name: /Send My Inquiry/ }).closest('form')!);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(error);
+    expect(localStorage.getItem('creativva_leads')).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText(/What are you looking/), {
+      target: { value: 'changed' },
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  }
+);
 
 it('appends a new lead after several existing entries', async () => {
   const existingLeads = [{ name: 'First' }, { name: 'Second' }, { name: 'Third' }];
