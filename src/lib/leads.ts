@@ -19,6 +19,11 @@ export interface LeadStorageError {
 
 export type LeadStorageResult<T> = { ok: true; value: T } | { ok: false; error: LeadStorageError };
 
+export interface LeadReadValue {
+  leads: Lead[];
+  skippedCount: number;
+}
+
 const failure = (
   code: LeadStorageError['code'],
   message: string,
@@ -76,7 +81,7 @@ const parseLead = (value: unknown): Lead | null => {
   };
 };
 
-export const readLeads = (): LeadStorageResult<Lead[]> => {
+export const readLeads = (): LeadStorageResult<LeadReadValue> => {
   const storageResult = getLeadStorage();
   if (!storageResult.ok) return storageResult;
 
@@ -88,7 +93,7 @@ export const readLeads = (): LeadStorageResult<Lead[]> => {
   }
 
   if (stored === null || stored.trim() === '') {
-    return { ok: true, value: [] };
+    return { ok: true, value: { leads: [], skippedCount: 0 } };
   }
 
   let parsed: unknown;
@@ -107,7 +112,13 @@ export const readLeads = (): LeadStorageResult<Lead[]> => {
     return failure('corrupt', 'Saved lead data is corrupt and contains no valid leads.');
   }
 
-  return { ok: true, value: leads };
+  return {
+    ok: true,
+    value: {
+      leads,
+      skippedCount: parsed.length - leads.length,
+    },
+  };
 };
 
 export const writeLeads = (leads: Lead[]): LeadStorageResult<void> => {
@@ -125,5 +136,5 @@ export const writeLeads = (leads: Lead[]): LeadStorageResult<void> => {
 export const appendLead = (lead: Lead): LeadStorageResult<void> => {
   const existingResult = readLeads();
   if (!existingResult.ok) return existingResult;
-  return writeLeads([...existingResult.value, lead]);
+  return writeLeads([...existingResult.value.leads, lead]);
 };

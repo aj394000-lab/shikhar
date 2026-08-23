@@ -2,10 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppImage from '@/components/ui/AppImage';
+import { clearAdminSession, persistAdminSession, readAdminSession } from '@/lib/admin-session';
 import { readLeads, writeLeads, type Lead } from '@/lib/leads';
 
-const ADMIN_LOCK_KEY = 'creativva_admin_unlocked';
-const ADMIN_SESSION_KEY = 'creativva_admin_session';
 const DEFAULT_ADMIN_USERNAME = 'ShikharBoss';
 const DEFAULT_ADMIN_PASSWORD = 'creativva2006';
 
@@ -39,7 +38,9 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [sessionNotice, setSessionNotice] = useState('');
   const [leadError, setLeadError] = useState('');
+  const [leadWarning, setLeadWarning] = useState('');
   const [loadFailed, setLoadFailed] = useState(false);
 
   const createLeadId = () => {
@@ -61,27 +62,32 @@ export default function AdminPage() {
 
   useEffect(() => {
     setMounted(true);
-    try {
-      const persisted = window.localStorage.getItem(ADMIN_LOCK_KEY);
-      const sessionValue = window.localStorage.getItem(ADMIN_SESSION_KEY);
-      if (persisted === 'true' || sessionValue === 'true') {
-        setIsUnlocked(true);
-      }
-    } catch (cause) {
-      console.error('Admin session storage is unavailable:', cause);
+    const sessionResult = readAdminSession();
+    if (!sessionResult.ok) {
+      setSessionNotice("This browser couldn't access admin session preferences.");
+      console.error('Admin session storage is unavailable:', sessionResult.cause);
+    } else if (sessionResult.value.remembered || sessionResult.value.active) {
+      setIsUnlocked(true);
     }
 
     const result = readLeads();
     if (!result.ok) {
       setLoadFailed(true);
+      setLeadWarning('');
       reportLeadError(result.error.message, result.error.cause);
       return;
     }
 
     setLeadError('');
     setLoadFailed(false);
-    const needsIdBackfill = result.value.some((lead) => !lead.id);
-    const normalized = result.value.map((lead) => ({ ...lead, id: lead.id || createLeadId() }));
+    const { leads: storedLeads, skippedCount } = result.value;
+    setLeadWarning(
+      skippedCount > 0
+        ? `${skippedCount} saved entr${skippedCount === 1 ? 'y was' : 'ies were'} unreadable and are not shown.`
+        : ''
+    );
+    const needsIdBackfill = storedLeads.some((lead) => !lead.id);
+    const normalized = storedLeads.map((lead) => ({ ...lead, id: lead.id || createLeadId() }));
     const sorted = [...normalized].sort(
       (a, b) => timestampValue(b.timestamp) - timestampValue(a.timestamp)
     );
@@ -114,12 +120,12 @@ export default function AdminPage() {
     const credentials = resolveAdminCredentials();
 
     if (username === credentials.username && password === credentials.password) {
-      if (rememberMe) {
-        window.localStorage.setItem(ADMIN_LOCK_KEY, 'true');
-        window.localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+      const sessionResult = persistAdminSession(rememberMe);
+      if (!sessionResult.ok) {
+        setSessionNotice("This browser couldn't remember your admin session.");
+        console.error('Admin session could not be saved:', sessionResult.cause);
       } else {
-        window.localStorage.removeItem(ADMIN_LOCK_KEY);
-        window.localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+        setSessionNotice('');
       }
       setIsUnlocked(true);
       setPasswordError('');
@@ -129,13 +135,18 @@ export default function AdminPage() {
   };
 
   const lockAdmin = () => {
-    window.localStorage.removeItem(ADMIN_LOCK_KEY);
-    window.localStorage.removeItem(ADMIN_SESSION_KEY);
+    const sessionResult = clearAdminSession();
     setIsUnlocked(false);
     setUsername('');
     setPassword('');
     setRememberMe(false);
     setPasswordError('');
+    if (!sessionResult.ok) {
+      setSessionNotice("This browser couldn't clear the saved admin session.");
+      console.error('Admin session could not be cleared:', sessionResult.cause);
+    } else {
+      setSessionNotice('');
+    }
   };
 
   const toggleSelect = (leadId: string) => {
@@ -240,7 +251,7 @@ export default function AdminPage() {
         try {
           URL.revokeObjectURL(url);
         } catch (cause) {
-          reportLeadError('The exported leads file could not be cleaned up.', cause);
+          console.error('The exported leads file could not be cleaned up:', cause);
         }
       }
     }
@@ -298,6 +309,12 @@ export default function AdminPage() {
           <p className="text-sm leading-6 mb-6" style={{ color: 'rgba(245,245,247,0.65)' }}>
             Enter the admin password to view lead submissions and manage entries.
           </p>
+
+          {sessionNotice && (
+            <p className="mb-4 text-sm" style={{ color: '#FDBA74' }}>
+              {sessionNotice}
+            </p>
+          )}
 
           <form onSubmit={handleUnlock} className="space-y-4">
             <div>
@@ -461,6 +478,20 @@ export default function AdminPage() {
           </p>
         </div>
 
+        {sessionNotice && (
+          <div
+            role="status"
+            className="mb-8 rounded-2xl border px-5 py-4 text-sm"
+            style={{
+              background: 'rgba(249,115,22,0.08)',
+              borderColor: 'rgba(249,115,22,0.3)',
+              color: '#FDBA74',
+            }}
+          >
+            {sessionNotice}
+          </div>
+        )}
+
         {leadError && (
           <div
             role="alert"
@@ -472,6 +503,20 @@ export default function AdminPage() {
             }}
           >
             {leadError}
+          </div>
+        )}
+
+        {leadWarning && (
+          <div
+            role="status"
+            className="mb-8 rounded-2xl border px-5 py-4 text-sm"
+            style={{
+              background: 'rgba(234,179,8,0.08)',
+              borderColor: 'rgba(234,179,8,0.3)',
+              color: '#FDE68A',
+            }}
+          >
+            {leadWarning}
           </div>
         )}
 
