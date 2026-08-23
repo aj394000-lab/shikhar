@@ -1,5 +1,6 @@
 'use client';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
+import { useRevealCards } from '@/hooks/useRevealOnScroll';
 
 const steps = [
   {
@@ -55,23 +56,7 @@ const steps = [
 export default function ProcessSection() {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            (entry.target as HTMLElement).style.opacity = '1';
-            entry.target.classList.add('animate-slide-up');
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -30px 0px' }
-    );
-    cardRefs.current.forEach((card) => {
-      if (card) observer.observe(card);
-    });
-    return () => observer.disconnect();
-  }, []);
+  useRevealCards(cardRefs, { threshold: 0.12, rootMargin: '0px 0px -30px 0px' });
 
   return (
     <section id="process" className="py-28 relative overflow-hidden">

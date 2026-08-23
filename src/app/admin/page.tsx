@@ -1,6 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import AppImage from '@/components/ui/AppImage';
+import { Lead, persistLeads, readStoredLeads } from '@/lib/leads';
+import { SERVICE_LABELS } from '@/lib/services';
+import { gradientTextStyle } from '@/lib/styles';
 
 const ADMIN_LOCK_KEY = 'creativva_admin_unlocked';
 const ADMIN_SESSION_KEY = 'creativva_admin_session';
@@ -15,28 +18,6 @@ const resolveAdminCredentials = () => {
     username: configuredUsername || DEFAULT_ADMIN_USERNAME,
     password: configuredPassword || DEFAULT_ADMIN_PASSWORD,
   };
-};
-
-interface Lead {
-  id?: string;
-  name: string;
-  email: string;
-  phone: string;
-  service: string;
-  message?: string;
-  timestamp: string;
-  // If true, admin UI should not display message or timestamp for this lead
-  hideDetails?: boolean;
-}
-
-const SERVICE_LABELS: Record<string, string> = {
-  'social-media': 'Social Media Marketing',
-  'content-creation': 'Content Creation',
-  'paid-ads': 'Paid Advertising',
-  'seo': 'SEO & Analytics',
-  'brand-identity': 'Brand Identity & Strategy',
-  'performance': 'Performance Marketing',
-  'video-editing': 'Video Editing',
 };
 
 export default function AdminPage() {
@@ -66,14 +47,13 @@ export default function AdminPage() {
         setIsUnlocked(true);
       }
 
-      const stored = window.localStorage.getItem('creativva_leads');
-      if (stored) {
-        const parsed = JSON.parse(stored) as Lead[];
+      const parsed = readStoredLeads();
+      if (parsed.length > 0) {
         const normalized = parsed.map((lead) => ({ ...lead, id: lead.id || createLeadId() }));
         const sorted = [...normalized].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         setLeads(sorted);
-        if (normalized.some((lead, idx) => !parsed[idx]?.id)) {
-          window.localStorage.setItem('creativva_leads', JSON.stringify(sorted));
+        if (parsed.some((lead) => !lead.id)) {
+          persistLeads(sorted);
         }
       }
     } catch {
@@ -147,7 +127,7 @@ export default function AdminPage() {
     const remaining = leads.filter((lead) => lead.id && !selected.has(lead.id));
     setLeads(remaining);
     setSelected(new Set());
-    localStorage.setItem('creativva_leads', JSON.stringify(remaining));
+    persistLeads(remaining);
   };
 
   const deleteLead = (leadId: string) => {
@@ -161,7 +141,7 @@ export default function AdminPage() {
       next.delete(leadId);
       return next;
     });
-    localStorage.setItem('creativva_leads', JSON.stringify(remaining));
+    persistLeads(remaining);
   };
 
   const exportCSV = () => {
@@ -309,7 +289,7 @@ export default function AdminPage() {
           </div>
           <div>
             <span className="font-extrabold text-lg tracking-tight" style={{ color: '#F5F5F7' }}>creativ</span>
-            <span className="font-extrabold text-lg tracking-tight" style={{ background: 'linear-gradient(135deg, #7B2FBE, #F97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>va</span>
+            <span className="font-extrabold text-lg tracking-tight" style={gradientTextStyle('linear-gradient(135deg, #7B2FBE, #F97316)')}>va</span>
             <span className="text-xs font-semibold ml-2 px-2 py-0.5 rounded-full" style={{ background: 'rgba(123,47,190,0.15)', border: '1px solid rgba(123,47,190,0.3)', color: '#A855F7' }}>Admin</span>
           </div>
         </div>
@@ -346,7 +326,7 @@ export default function AdminPage() {
             { label: 'Services', value: new Set(leads.map(l => l.service)).size },
           ].map((stat) => (
             <div key={stat.label} className="rounded-2xl p-5" style={{ background: 'rgba(19,20,40,0.8)', border: '1px solid rgba(42,43,69,0.6)' }}>
-              <p className="text-2xl font-extrabold" style={{ background: 'linear-gradient(135deg, #A855F7, #F97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{stat.value}</p>
+              <p className="text-2xl font-extrabold" style={gradientTextStyle('linear-gradient(135deg, #A855F7, #F97316)')}>{stat.value}</p>
               <p className="text-xs mt-1" style={{ color: 'rgba(245,245,247,0.45)' }}>{stat.label}</p>
             </div>
           ))}

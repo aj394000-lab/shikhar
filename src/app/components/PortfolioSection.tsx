@@ -1,6 +1,8 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import AppImage from '@/components/ui/AppImage';
+import { ArrowRightIcon } from '@/components/ui/icons';
+import { useSectionReveal } from '@/hooks/useRevealOnScroll';
 
 const portfolioItems = [
   {
@@ -176,21 +178,7 @@ export default function PortfolioSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && titleRef.current) {
-            titleRef.current.classList.add('animate-slide-up');
-            titleRef.current.style.opacity = '1';
-          }
-        });
-      },
-      { threshold: 0.2 }
-    );
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
-  }, []);
+  useSectionReveal(sectionRef, [{ ref: titleRef, className: 'animate-slide-up' }]);
 
   return (
     <section id="portfolio" ref={sectionRef} className="py-28 relative overflow-hidden aurora-bg">
@@ -235,9 +223,7 @@ export default function PortfolioSection() {
             }}
           >
             Commission a Shoot
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
+            <ArrowRightIcon size={14} />
           </a>
         </div>
 

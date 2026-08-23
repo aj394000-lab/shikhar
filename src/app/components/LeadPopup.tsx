@@ -1,28 +1,15 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-
-interface LeadData {
-  name: string;
-  phone: string;
-  email: string;
-  service: string;
-  message: string;
-  // When true, admin UI should omit showing message/timestamp for privacy/UX
-  hideDetails?: boolean;
-}
+import { useLeadForm } from '@/hooks/useLeadForm';
+import { saveLead } from '@/lib/leads';
+import { SERVICE_OPTIONS } from '@/lib/services';
 
 export default function LeadPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [formData, setFormData] = useState<LeadData>({
-    name: '',
-    phone: '',
-    email: '',
-    service: '',
-    message: '',
-  });
+  const { formData, handleChange } = useLeadForm();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -38,25 +25,14 @@ export default function LeadPopup() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Save to localStorage with timestamp
-    try {
-      const existing = JSON.parse(localStorage.getItem('creativva_leads') || '[]');
-      // mark popup submissions to hide details in admin
-      const newLead = { ...formData, timestamp: new Date().toISOString(), hideDetails: true };
-      localStorage.setItem('creativva_leads', JSON.stringify([...existing, newLead]));
-    } catch {
-      // silently fail
-    }
+    // mark popup submissions to hide details in admin
+    saveLead(formData, true);
     console.log('Lead captured:', formData);
     setIsSubmitted(true);
     setTimeout(() => {
       setIsVisible(false);
       setIsDismissed(true);
     }, 2500);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   if (!isVisible) return null;
@@ -156,13 +132,11 @@ export default function LeadPopup() {
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm focus:outline-none focus:border-primary transition-colors appearance-none"
                   >
                     <option value="" className="bg-card text-muted-foreground">Select a Service *</option>
-                    <option value="social-media" className="bg-card">Social Media Marketing</option>
-                    <option value="content-creation" className="bg-card">Content Creation</option>
-                    <option value="paid-ads" className="bg-card">Paid Advertising</option>
-                    <option value="seo" className="bg-card">SEO &amp; Analytics</option>
-                    <option value="brand-identity" className="bg-card">Brand Identity &amp; Strategy</option>
-                    <option value="performance" className="bg-card">Performance Marketing</option>
-                    <option value="video-editing" className="bg-card">Video Editing</option>
+                    {SERVICE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-card">
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
