@@ -1,13 +1,27 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { appendLead, type Lead } from '@/lib/leads';
+import { LEAD_FIELD_LIMITS, validateLead, type LeadInput } from '@/lib/leadValidation';
+import { appendLead } from '@/lib/leads';
+
+type FormState = LeadInput;
+
+const SERVICE_OPTIONS = [
+  'social-media-marketing',
+  'content-creation',
+  'paid-advertising',
+  'seo-analytics',
+  'social-media-management',
+  'brand-identity',
+  'performance-marketing',
+  'video-editing',
+] as const;
 
 export default function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
-  const [formData, setFormData] = useState<Omit<Lead, 'id' | 'timestamp'>>({
+  const [formData, setFormData] = useState<FormState>({
     name: '',
     phone: '',
     email: '',
@@ -15,6 +29,7 @@ export default function ContactSection() {
     message: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
@@ -43,12 +58,19 @@ export default function ContactSection() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (formError) setFormError('');
+    if (submitError) setSubmitError('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = validateLead(formData, SERVICE_OPTIONS);
+    if (!validation.ok) {
+      setFormError(validation.error);
+      return;
+    }
     const result = appendLead({
-      ...formData,
+      ...validation.lead,
       timestamp: new Date().toISOString(),
       hideDetails: false,
     });
@@ -58,6 +80,7 @@ export default function ContactSection() {
       return;
     }
 
+    setFormError('');
     setSubmitError('');
     setSubmitted(true);
   };
@@ -378,6 +401,8 @@ export default function ContactSection() {
                         onChange={handleChange}
                         placeholder="Your name"
                         required
+                        maxLength={LEAD_FIELD_LIMITS.name}
+                        autoComplete="name"
                         className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                         style={{
                           background: 'rgba(22,23,40,0.8)',
@@ -409,6 +434,8 @@ export default function ContactSection() {
                         onChange={handleChange}
                         placeholder="+91 XXXXX XXXXX"
                         required
+                        maxLength={LEAD_FIELD_LIMITS.phone}
+                        autoComplete="tel"
                         className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                         style={{
                           background: 'rgba(22,23,40,0.8)',
@@ -442,6 +469,8 @@ export default function ContactSection() {
                       onChange={handleChange}
                       placeholder="your@email.com"
                       required
+                      maxLength={LEAD_FIELD_LIMITS.email}
+                      autoComplete="email"
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                       style={{
                         background: 'rgba(22,23,40,0.8)',
@@ -558,6 +587,7 @@ export default function ContactSection() {
                       onChange={handleChange}
                       placeholder="What are you looking to achieve? Any specific goals or timelines?"
                       rows={4}
+                      maxLength={LEAD_FIELD_LIMITS.message}
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none resize-none"
                       style={{
                         background: 'rgba(22,23,40,0.8)',
@@ -576,6 +606,12 @@ export default function ContactSection() {
                       }}
                     />
                   </div>
+
+                  {formError && (
+                    <p className="text-xs" role="alert" style={{ color: '#FF8C4A' }}>
+                      {formError}
+                    </p>
+                  )}
 
                   <button
                     type="submit"

@@ -1,20 +1,34 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
-import { appendLead, type Lead } from '@/lib/leads';
+import { LEAD_FIELD_LIMITS, validateLead, type LeadInput } from '@/lib/leadValidation';
+import { appendLead } from '@/lib/leads';
+
+type LeadData = LeadInput;
+
+const SERVICE_OPTIONS = [
+  'social-media',
+  'content-creation',
+  'paid-ads',
+  'seo',
+  'brand-identity',
+  'performance',
+  'video-editing',
+] as const;
 
 export default function LeadPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [formData, setFormData] = useState<Omit<Lead, 'id' | 'timestamp'>>({
+  const [formError, setFormError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [formData, setFormData] = useState<LeadData>({
     name: '',
     phone: '',
     email: '',
     service: '',
     message: '',
   });
-  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -30,8 +44,13 @@ export default function LeadPopup() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = validateLead(formData, SERVICE_OPTIONS);
+    if (!validation.ok) {
+      setFormError(validation.error);
+      return;
+    }
     const result = appendLead({
-      ...formData,
+      ...validation.lead,
       timestamp: new Date().toISOString(),
       hideDetails: true,
     });
@@ -41,6 +60,7 @@ export default function LeadPopup() {
       return;
     }
 
+    setFormError('');
     setSubmitError('');
     setIsSubmitted(true);
     setTimeout(() => {
@@ -53,6 +73,8 @@ export default function LeadPopup() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (formError) setFormError('');
+    if (submitError) setSubmitError('');
   };
 
   if (!isVisible) return null;
@@ -134,6 +156,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Your Full Name *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.name}
+                    autoComplete="name"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -145,6 +169,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Phone Number *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.phone}
+                    autoComplete="tel"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -156,6 +182,8 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Email Address *"
                     required
+                    maxLength={LEAD_FIELD_LIMITS.email}
+                    autoComplete="email"
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -200,9 +228,15 @@ export default function LeadPopup() {
                     onChange={handleChange}
                     placeholder="Tell us about your project (optional)"
                     rows={3}
+                    maxLength={LEAD_FIELD_LIMITS.message}
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors resize-none"
                   />
                 </div>
+                {formError && (
+                  <p className="text-xs" role="alert" style={{ color: '#FF8C4A' }}>
+                    {formError}
+                  </p>
+                )}
                 <button
                   type="submit"
                   className="w-full cta-gradient-btn text-white font-bold py-4 rounded-xl text-sm tracking-wide"

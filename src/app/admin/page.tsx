@@ -1,22 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppImage from '@/components/ui/AppImage';
-import { clearAdminSession, persistAdminSession, readAdminSession } from '@/lib/admin-session';
 import { readLeads, writeLeads, type Lead } from '@/lib/leads';
-
-const DEFAULT_ADMIN_USERNAME = 'ShikharBoss';
-const DEFAULT_ADMIN_PASSWORD = 'creativva2006';
-
-const resolveAdminCredentials = () => {
-  const configuredUsername = process.env.NEXT_PUBLIC_ADMIN_USERNAME?.trim();
-  const configuredPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD?.trim();
-
-  return {
-    username: configuredUsername || DEFAULT_ADMIN_USERNAME,
-    password: configuredPassword || DEFAULT_ADMIN_PASSWORD,
-  };
-};
 
 const SERVICE_LABELS: Record<string, string> = {
   'social-media': 'Social Media Marketing',
@@ -29,16 +16,11 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 export default function AdminPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [sessionNotice, setSessionNotice] = useState('');
   const [leadError, setLeadError] = useState('');
   const [leadWarning, setLeadWarning] = useState('');
   const [loadFailed, setLoadFailed] = useState(false);
@@ -50,11 +32,6 @@ export default function AdminPage() {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   };
 
-  const reportLeadError = (message: string, cause: unknown) => {
-    setLeadError(message);
-    console.error(message, cause);
-  };
-
   const timestampValue = (timestamp: string) => {
     const value = new Date(timestamp).getTime();
     return Number.isNaN(value) ? 0 : value;
@@ -62,19 +39,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     setMounted(true);
-    const sessionResult = readAdminSession();
-    if (!sessionResult.ok) {
-      setSessionNotice("This browser couldn't access admin session preferences.");
-      console.error('Admin session storage is unavailable:', sessionResult.cause);
-    } else if (sessionResult.value.remembered || sessionResult.value.active) {
-      setIsUnlocked(true);
-    }
-
     const result = readLeads();
     if (!result.ok) {
       setLoadFailed(true);
       setLeadWarning('');
-      reportLeadError(result.error.message, result.error.cause);
+      setLeadError(result.error.message);
+      console.error(result.error.message, result.error.cause);
       return;
     }
 
@@ -95,10 +65,8 @@ export default function AdminPage() {
     if (needsIdBackfill) {
       const writeResult = writeLeads(sorted);
       if (!writeResult.ok) {
-        reportLeadError(
-          'Lead IDs could not be saved. The list remains available for this session.',
-          writeResult.error.cause
-        );
+        setLeadError('Lead IDs could not be saved. The list remains available for this session.');
+        console.error('Lead IDs could not be saved:', writeResult.error.cause);
       }
     }
   }, []);
@@ -115,37 +83,11 @@ export default function AdminPage() {
     );
   });
 
-  const handleUnlock = (event: React.FormEvent) => {
-    event.preventDefault();
-    const credentials = resolveAdminCredentials();
-
-    if (username === credentials.username && password === credentials.password) {
-      const sessionResult = persistAdminSession(rememberMe);
-      if (!sessionResult.ok) {
-        setSessionNotice("This browser couldn't remember your admin session.");
-        console.error('Admin session could not be saved:', sessionResult.cause);
-      } else {
-        setSessionNotice('');
-      }
-      setIsUnlocked(true);
-      setPasswordError('');
-    } else {
-      setPasswordError('Incorrect username or password. Try again.');
-    }
-  };
-
-  const lockAdmin = () => {
-    const sessionResult = clearAdminSession();
-    setIsUnlocked(false);
-    setUsername('');
-    setPassword('');
-    setRememberMe(false);
-    setPasswordError('');
-    if (!sessionResult.ok) {
-      setSessionNotice("This browser couldn't clear the saved admin session.");
-      console.error('Admin session could not be cleared:', sessionResult.cause);
-    } else {
-      setSessionNotice('');
+  const lockAdmin = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } finally {
+      router.replace('/admin/login');
     }
   };
 
@@ -178,7 +120,8 @@ export default function AdminPage() {
     const remaining = leads.filter((lead) => !lead.id || !selected.has(lead.id));
     const result = writeLeads(remaining);
     if (!result.ok) {
-      reportLeadError("Selected lead deletion couldn't be saved.", result.error.cause);
+      setLeadError("Selected lead deletion couldn't be saved.");
+      console.error("Selected lead deletion couldn't be saved:", result.error.cause);
       return;
     }
     setLeadError('');
@@ -193,7 +136,8 @@ export default function AdminPage() {
     const remaining = leads.filter((lead) => lead.id !== leadId);
     const result = writeLeads(remaining);
     if (!result.ok) {
-      reportLeadError("Lead deletion couldn't be saved.", result.error.cause);
+      setLeadError("Lead deletion couldn't be saved.");
+      console.error("Lead deletion couldn't be saved:", result.error.cause);
       return;
     }
     setLeadError('');
@@ -245,7 +189,8 @@ export default function AdminPage() {
       link.click();
       setLeadError('');
     } catch (cause) {
-      reportLeadError('Leads could not be exported. Please try again.', cause);
+      setLeadError('Leads could not be exported. Please try again.');
+      console.error('Leads could not be exported:', cause);
     } finally {
       if (url) {
         try {
@@ -268,134 +213,6 @@ export default function AdminPage() {
   };
 
   if (!mounted) return null;
-
-  if (!isUnlocked) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center px-6"
-        style={{ background: '#050508', color: '#F5F5F7' }}
-      >
-        <div
-          className="w-full max-w-md rounded-3xl border p-8 shadow-2xl"
-          style={{
-            background: 'rgba(19,20,40,0.95)',
-            borderColor: 'rgba(42,43,69,0.7)',
-            boxShadow: '0 0 60px rgba(123,47,190,0.18)',
-          }}
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 relative">
-              <AppImage
-                src="/assets/images/image-1785475268438.png"
-                alt="Creativva logo"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <p
-                className="text-xs font-semibold uppercase tracking-[0.3em]"
-                style={{ color: 'rgba(245,245,247,0.45)' }}
-              >
-                Restricted Area
-              </p>
-              <h1 className="text-xl font-extrabold" style={{ color: '#F5F5F7' }}>
-                Admin Access
-              </h1>
-            </div>
-          </div>
-
-          <p className="text-sm leading-6 mb-6" style={{ color: 'rgba(245,245,247,0.65)' }}>
-            Enter the admin password to view lead submissions and manage entries.
-          </p>
-
-          {sessionNotice && (
-            <p className="mb-4 text-sm" style={{ color: '#FDBA74' }}>
-              {sessionNotice}
-            </p>
-          )}
-
-          <form onSubmit={handleUnlock} className="space-y-4">
-            <div>
-              <label
-                className="block text-xs font-semibold uppercase tracking-[0.2em] mb-2"
-                style={{ color: 'rgba(245,245,247,0.45)' }}
-              >
-                Username
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                  if (passwordError) setPasswordError('');
-                }}
-                placeholder="Enter username"
-                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                style={{
-                  background: 'rgba(30,31,53,0.8)',
-                  borderColor: 'rgba(42,43,69,0.8)',
-                  color: '#F5F5F7',
-                }}
-              />
-            </div>
-
-            <div>
-              <label
-                className="block text-xs font-semibold uppercase tracking-[0.2em] mb-2"
-                style={{ color: 'rgba(245,245,247,0.45)' }}
-              >
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (passwordError) setPasswordError('');
-                }}
-                placeholder="Enter password"
-                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                style={{
-                  background: 'rgba(30,31,53,0.8)',
-                  borderColor: 'rgba(42,43,69,0.8)',
-                  color: '#F5F5F7',
-                }}
-              />
-            </div>
-
-            <label
-              className="flex items-center gap-2 text-sm cursor-pointer"
-              style={{ color: 'rgba(245,245,247,0.7)' }}
-            >
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-600 bg-transparent accent-purple-500"
-              />
-              Remember me on this browser
-            </label>
-
-            {passwordError && (
-              <p className="text-sm" style={{ color: '#F97316' }}>
-                {passwordError}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="w-full rounded-xl px-4 py-3 font-bold text-sm transition-transform duration-200 hover:scale-[1.01]"
-              style={{ background: 'linear-gradient(135deg, #7B2FBE, #F97316)', color: '#FFFFFF' }}
-            >
-              Unlock Admin Panel
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen" style={{ background: '#050508', color: '#F5F5F7' }}>
@@ -477,20 +294,6 @@ export default function AdminPage() {
             All leads captured from the website popup form.
           </p>
         </div>
-
-        {sessionNotice && (
-          <div
-            role="status"
-            className="mb-8 rounded-2xl border px-5 py-4 text-sm"
-            style={{
-              background: 'rgba(249,115,22,0.08)',
-              borderColor: 'rgba(249,115,22,0.3)',
-              color: '#FDBA74',
-            }}
-          >
-            {sessionNotice}
-          </div>
-        )}
 
         {leadError && (
           <div
