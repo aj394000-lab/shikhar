@@ -1,19 +1,25 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
+import { LEAD_FIELD_LIMITS, validateLead, type LeadInput } from '@/lib/leadValidation';
 
-interface FormState {
-  name: string;
-  phone: string;
-  email: string;
-  service: string;
-  message: string;
-}
+type FormState = LeadInput;
 
 interface LeadEntry extends FormState {
   timestamp: string;
   hideDetails?: boolean;
 }
+
+const SERVICE_OPTIONS = [
+  'social-media-marketing',
+  'content-creation',
+  'paid-advertising',
+  'seo-analytics',
+  'social-media-management',
+  'brand-identity',
+  'performance-marketing',
+  'video-editing',
+] as const;
 
 export default function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -27,6 +33,7 @@ export default function ContactSection() {
     message: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -52,6 +59,7 @@ export default function ContactSection() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    if (formError) setFormError('');
   };
 
   const saveLeadEntry = (lead: LeadEntry) => {
@@ -65,13 +73,18 @@ export default function ContactSection() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = validateLead(formData, SERVICE_OPTIONS);
+    if (!validation.ok) {
+      setFormError(validation.error);
+      return;
+    }
     const newLead: LeadEntry = {
-      ...formData,
+      ...validation.lead,
       timestamp: new Date().toISOString(),
       hideDetails: false,
     };
     saveLeadEntry(newLead);
-    console.log('Contact form submission:', formData);
+    setFormError('');
     setSubmitted(true);
   };
 
@@ -282,6 +295,8 @@ export default function ContactSection() {
                         onChange={handleChange}
                         placeholder="Your name"
                         required
+                        maxLength={LEAD_FIELD_LIMITS.name}
+                        autoComplete="name"
                         className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                         style={{
                           background: 'rgba(22,23,40,0.8)',
@@ -303,6 +318,8 @@ export default function ContactSection() {
                         onChange={handleChange}
                         placeholder="+91 XXXXX XXXXX"
                         required
+                        maxLength={LEAD_FIELD_LIMITS.phone}
+                        autoComplete="tel"
                         className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                         style={{
                           background: 'rgba(22,23,40,0.8)',
@@ -326,6 +343,8 @@ export default function ContactSection() {
                       onChange={handleChange}
                       placeholder="your@email.com"
                       required
+                      maxLength={LEAD_FIELD_LIMITS.email}
+                      autoComplete="email"
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none"
                       style={{
                         background: 'rgba(22,23,40,0.8)',
@@ -377,6 +396,7 @@ export default function ContactSection() {
                       onChange={handleChange}
                       placeholder="What are you looking to achieve? Any specific goals or timelines?"
                       rows={4}
+                      maxLength={LEAD_FIELD_LIMITS.message}
                       className="w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:outline-none resize-none"
                       style={{
                         background: 'rgba(22,23,40,0.8)',
@@ -387,6 +407,10 @@ export default function ContactSection() {
                       onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(30,32,64,0.9)'; (e.target as HTMLTextAreaElement).style.boxShadow = 'none'; }}
                     />
                   </div>
+
+                  {formError && (
+                    <p className="text-xs" role="alert" style={{ color: '#FF8C4A' }}>{formError}</p>
+                  )}
 
                   <button
                     type="submit"
