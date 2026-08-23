@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { LEAD_FIELD_LIMITS, validateLead, type LeadInput } from '@/lib/leadValidation';
+import { appendLead } from '@/lib/leads';
 
 type LeadData = LeadInput;
 
@@ -20,6 +21,7 @@ export default function LeadPopup() {
   const [isDismissed, setIsDismissed] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
+  const [submitError, setSubmitError] = useState('');
   const [formData, setFormData] = useState<LeadData>({
     name: '',
     phone: '',
@@ -47,16 +49,19 @@ export default function LeadPopup() {
       setFormError(validation.error);
       return;
     }
-    // Save to localStorage with timestamp
-    try {
-      const existing = JSON.parse(localStorage.getItem('creativva_leads') || '[]');
-      // mark popup submissions to hide details in admin
-      const newLead = { ...validation.lead, timestamp: new Date().toISOString(), hideDetails: true };
-      localStorage.setItem('creativva_leads', JSON.stringify([...existing, newLead]));
-    } catch {
-      // silently fail
+    const result = appendLead({
+      ...validation.lead,
+      timestamp: new Date().toISOString(),
+      hideDetails: true,
+    });
+    if (!result.ok) {
+      setSubmitError(result.error.message);
+      console.error('Lead popup submission failed:', result.error.cause);
+      return;
     }
+
     setFormError('');
+    setSubmitError('');
     setIsSubmitted(true);
     setTimeout(() => {
       setIsVisible(false);
@@ -64,9 +69,12 @@ export default function LeadPopup() {
     }, 2500);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (formError) setFormError('');
+    if (submitError) setSubmitError('');
   };
 
   if (!isVisible) return null;
@@ -74,10 +82,7 @@ export default function LeadPopup() {
   return (
     <div className="fixed inset-0 z-[8888] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={handleClose}
-      />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
       {/* Popup card */}
       <div
@@ -115,13 +120,32 @@ export default function LeadPopup() {
                   Free Consultation
                 </div>
                 <h2 className="text-2xl font-extrabold text-foreground leading-tight">
-                  Ready to grow your{' '}
-                  <span className="gradient-text-purple-orange">brand?</span>
+                  Ready to grow your <span className="gradient-text-purple-orange">brand?</span>
                 </h2>
                 <p className="text-muted-foreground text-sm mt-2">
                   Fill in your details and we&apos;ll craft a custom strategy for you.
                 </p>
               </div>
+
+              {submitError && (
+                <div
+                  role="alert"
+                  className="mb-4 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-200"
+                >
+                  <p>{submitError}</p>
+                  <p className="mt-2">
+                    Please try again, or call{' '}
+                    <a href="tel:+917415072820" className="font-semibold underline">
+                      +91 7415072820
+                    </a>{' '}
+                    or email{' '}
+                    <a href="mailto:creativvalab@gmail.com" className="font-semibold underline">
+                      creativvalab@gmail.com
+                    </a>
+                    .
+                  </p>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -171,14 +195,30 @@ export default function LeadPopup() {
                     required
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm focus:outline-none focus:border-primary transition-colors appearance-none"
                   >
-                    <option value="" className="bg-card text-muted-foreground">Select a Service *</option>
-                    <option value="social-media" className="bg-card">Social Media Marketing</option>
-                    <option value="content-creation" className="bg-card">Content Creation</option>
-                    <option value="paid-ads" className="bg-card">Paid Advertising</option>
-                    <option value="seo" className="bg-card">SEO &amp; Analytics</option>
-                    <option value="brand-identity" className="bg-card">Brand Identity &amp; Strategy</option>
-                    <option value="performance" className="bg-card">Performance Marketing</option>
-                    <option value="video-editing" className="bg-card">Video Editing</option>
+                    <option value="" className="bg-card text-muted-foreground">
+                      Select a Service *
+                    </option>
+                    <option value="social-media" className="bg-card">
+                      Social Media Marketing
+                    </option>
+                    <option value="content-creation" className="bg-card">
+                      Content Creation
+                    </option>
+                    <option value="paid-ads" className="bg-card">
+                      Paid Advertising
+                    </option>
+                    <option value="seo" className="bg-card">
+                      SEO &amp; Analytics
+                    </option>
+                    <option value="brand-identity" className="bg-card">
+                      Brand Identity &amp; Strategy
+                    </option>
+                    <option value="performance" className="bg-card">
+                      Performance Marketing
+                    </option>
+                    <option value="video-editing" className="bg-card">
+                      Video Editing
+                    </option>
                   </select>
                 </div>
                 <div>
@@ -193,7 +233,9 @@ export default function LeadPopup() {
                   />
                 </div>
                 {formError && (
-                  <p className="text-xs" role="alert" style={{ color: '#FF8C4A' }}>{formError}</p>
+                  <p className="text-xs" role="alert" style={{ color: '#FF8C4A' }}>
+                    {formError}
+                  </p>
                 )}
                 <button
                   type="submit"
